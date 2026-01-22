@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>MC AI Agent</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 12px; }
+      textarea { width: 600px; height: 80px; }
+      #frame { width: 640px; height: 360px; background: #111; display:block; }
+      #logs { width: 800px; height: 240px; overflow:auto; background:#000; color:#0f0; padding:8px; }
+    </style>
+  </head>
+  <body>
+    <h1>MC AI Agent</h1>
+
+    <div>
+      LM Studio URL: <input id="lmurl" value="http://10.5.0.2:1234" size="32" />
+      <button id="saveLm">Save</button>
+    </div>
+
+    <div style="margin-top:8px;">
+      <label>Instances:</label>
+      <select id="instances"></select>
+      <button id="refresh">Refresh</button>
+      <button id="attach">Attach</button>
+    </div>
+
+    <div style="margin-top:12px;">
+      <textarea id="prompt" placeholder="Type a goal, e.g. 'get full diamond armor'"></textarea><br/>
+      <select id="mode">
+        <option value="high">High-level (mod plans)</option>
+        <option value="low">Low-level (AI gives steps)</option>
+      </select>
+      <button id="start">Start</button>
+      <button id="stop">Stop</button>
+    </div>
+
+    <h3>Live View</h3>
+    <img id="frame" src="" alt="live frame from Minecraft mod (base64 PNG)"/>
+
+    <h3>Logs / Stream</h3>
+    <pre id="logs"></pre>
+
+    <div>
+      FPS: <input id="fps" type="number" min="1" max="15" value="1" />
+      <button id="startStream">Start Stream</button>
+      <button id="stopStream">Stop Stream</button>
+    </div>
+
+    <script>
+      const logs = document.getElementById('logs');
+      function log(msg) {
+        logs.innerText += `[${new Date().toLocaleTimeString()}] ${JSON.stringify(msg)}\n`;
+        logs.scrollTop = logs.scrollHeight;
+      }
+
+      let frontendWs = null;
+      function startFrontendWS() {
+        frontendWs = new WebSocket("ws://127.0.0.1:8000/ws/frontend");
+        frontendWs.onopen = () => log({event: "frontend_ws_open"});
+        frontendWs.onmessage = (ev) => {
+          try {
+            const j = JSON.parse(ev.data);
+            if (j.source === "mod" && j.payload && j.payload.screenshot_b64) {
+              document.getElementById('frame').src = "data:image/png;base64," + j.payload.screenshot_b64;
+            } else {
+              log(j);
+            }
+          } catch (e) {
+            log({error: "parse_error", raw: ev.data});
+          }
+        };
+        frontendWs.onclose = () => log({event: "frontend_ws_closed"});
+      }
+      startFrontendWS();
+
+      async function refreshInstances() {
+        const r = await fetch("http://127.0.0.1:8000/instances");
+        const j = await r.json();
+        const sel = document.getElementById('instances');
+        sel.innerHTML = '';
+        (j.mods || []).forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m.port;
+          opt.text = `mod @ port ${m.port}`;
+          sel.appendChild(opt);
+        });
+        log({instances_count: (j.mods||[]).length, mc_procs: j.mc_processes});
+      }
+
+      document.getElementById('refresh').addEventListener('click', refreshInstances);
+      document.getElementById('attach').addEventListener('click', async () => {
+        const port = parseInt(document.getElementById('instances').value);
+        if (!port) { alert('select instance'); return; }
+        const r = await fetch("http://127.0.0.1:8000/attach", {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({port})});
+        const j = await r.json();
+        log(j);
+      });
+      document.getElementById('start').addEventListener('click', async () => {
+        const port = parseInt(document.getElementById('instances').value);
+        const prompt = document.getElementById('prompt').value;
+        const mode = document.getElementById('mode').value;
+        if (!port || !prompt) { alert('select instance and enter prompt'); return; }
+        const r = await fetch("http://127.0.0.1:8000/send_prompt", {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({port, prompt, mode})});
+        const j = await r.json();
+        log(j);
+      });
+      document.getElementById('stop').addEventListener('click', async () => {
+        const port = parseInt(document.getElementById('instances').value);
+        const r = await fetch("http://127.0.0.1:8000/stop", {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({port})});
+        log(await r.json());
+      });
+
+      document.getElementById('startStream').addEventListener('click', async () => {
+        const port = parseInt(document.getElementById('instances').value);
+        const fps = parseInt(document.getElementById('fps').value) || 1;
+        if (!port) { alert('select instance'); return; }
+        const r = await fetch("http://127.0.0.1:8000/screenshot_control", {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({port, command:'start', fps})});
+        log(await r.json());
+      });
+      document.getElementById('stopStream').addEventListener('click', async () => {
+        const port = parseInt(document.getElementById('instances').value);
+        const r = await fetch("http://127.0.0.1:8000/screenshot_control", {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({port, command:'stop'})});
+        log(await r.json());
+      });
+
+      document.getElementById('saveLm').addEventListener('click', async () => {
+        const url = document.getElementById('lmurl').value;
+        // Save locally by writing to backend/config.json via /config (not implemented write endpoint in this scaffold).
+        // For now we just store the value in localStorage for the UI; backend config remains authoritative.
+        localStorage.setItem('lm_url', url);
+        log({event: 'lm_url_saved', url});
+      });
+
+      // Initial refresh
+      refreshInstances();
+    </script>
+  </body>
+</html>
