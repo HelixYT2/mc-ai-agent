@@ -1,0 +1,73 @@
+name: CI - Windows build
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    env:
+      PYTHON: "python"
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Java (JDK 17)
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 17
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+
+    - name: Attempt to fetch Baritone jar (optional)
+      run: |
+        mkdir -Force mod\libs
+        echo "Attempting to download Baritone (optional) to mod/libs..."
+        REM Try a known release URL (may fail). This is optional; build continues if absent.
+        powershell -Command "try { Invoke-WebRequest -Uri 'https://github.com/cabaletta/baritone/releases/latest/download/baritone.zip' -OutFile 'baritone.zip'; Expand-Archive -Force baritone.zip -DestinationPath baritone_tmp; Copy-Item -Path baritone_tmp\*.jar -Destination mod\libs -Force } catch { Write-Host 'Baritone download failed or not needed.' }"
+
+    - name: Build Fabric mod (Gradle)
+      working-directory: mod
+      run: |
+        if (Test-Path gradlew) { .\gradlew build } else { gradle build }
+      shell: powershell
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install backend deps
+      working-directory: backend
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Build backend exe (PyInstaller)
+      working-directory: backend
+      run: |
+        pip install pyinstaller
+        pyinstaller --onefile main.py --name backend
+      shell: powershell
+
+    - name: Prepare Electron package
+      working-directory: electron
+      run: |
+        npm ci
+        npm run dist
+      shell: powershell
+
+    - name: Collect artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ci-artifacts
+        path: |
+          mod\build\libs\*.jar
+          backend\dist\backend.exe
+          electron\dist\**\*.exe
