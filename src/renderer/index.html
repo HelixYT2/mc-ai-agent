@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minecraft AI Agent</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>🎮 Minecraft AI Agent</h1>
+      <div class="status-bar">
+        <span id="status-indicator" class="status-badge disconnected">Disconnected</span>
+        <span id="instance-info"></span>
+      </div>
+    </header>
+
+    <main>
+      <div class="sidebar">
+        <section class="panel">
+          <h2>Minecraft Instances</h2>
+          <button id="refresh-btn" class="btn btn-secondary">🔄 Refresh</button>
+          <div id="instances-list" class="instances-container">
+            <p class="info-text">Click refresh to detect Minecraft instances</p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Settings</h2>
+          <div class="setting-group">
+            <label for="ai-mode">AI Mode:</label>
+            <select id="ai-mode" class="input">
+              <option value="hybrid">Hybrid (Recommended)</option>
+              <option value="high-level">High-Level Commands</option>
+              <option value="low-level">Low-Level Actions</option>
+            </select>
+          </div>
+          
+          <div class="setting-group">
+            <label for="lm-studio-url">LM Studio URL:</label>
+            <input type="text" id="lm-studio-url" class="input" value="http://localhost:1234" placeholder="http://localhost:1234">
+          </div>
+
+          <div class="setting-group">
+            <label for="temperature">Temperature:</label>
+            <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.7" class="slider">
+            <span id="temperature-value">0.7</span>
+          </div>
+        </section>
+      </div>
+
+      <div class="main-content">
+        <section class="panel prompt-section">
+          <h2>AI Prompt</h2>
+          <div class="prompt-container">
+            <textarea id="prompt-input" class="prompt-input" placeholder="Enter your command... (e.g., 'get full diamonds', 'build a house', 'mine 64 iron ore')" rows="3"></textarea>
+            <div class="prompt-actions">
+              <button id="send-btn" class="btn btn-primary" disabled>🚀 Execute</button>
+              <button id="stop-btn" class="btn btn-danger" disabled>⏹️ Stop</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel video-section">
+          <h2>Live View</h2>
+          <div id="video-container" class="video-container">
+            <div class="video-placeholder">
+              <p>📹 Video feed will appear here when task is running</p>
+              <small>Minecraft window will be captured and displayed in real-time</small>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel logs-section">
+          <h2>Activity Log</h2>
+          <div id="logs-container" class="logs-container">
+            <div class="log-entry info">
+              <span class="log-time">[00:00:00]</span>
+              <span class="log-message">System initialized. Ready to connect to Minecraft.</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
