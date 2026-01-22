@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "aihandler",
+  "version": "1.0.0",
+  "name": "AI Handler Mod",
+  "description": "Client-side mod exposing a WebSocket API for automation and Baritone integration.",
+  "authors": ["you"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.aimod.AIHandlerMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.14.0"
+  }
+}
