@@ -9,6 +9,8 @@ import net.minecraft.util.math.BlockPos;
  * This is a placeholder/wrapper for when Baritone is properly integrated.
  */
 public class BaritoneIntegration {
+    private static final String BARITONE_API_CLASS = "baritone.api.BaritoneAPI";
+    
     private MinecraftClient client;
     private boolean isBaritoneAvailable = false;
     
@@ -20,7 +22,7 @@ public class BaritoneIntegration {
     private void checkBaritoneAvailability() {
         try {
             // Try to load Baritone class
-            Class.forName("baritone.api.BaritoneAPI");
+            Class.forName(BARITONE_API_CLASS);
             isBaritoneAvailable = true;
         } catch (ClassNotFoundException e) {
             isBaritoneAvailable = false;

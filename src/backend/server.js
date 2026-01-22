@@ -10,8 +10,8 @@ class BackendServer extends EventEmitter {
     this.currentTask = null;
     this.taskQueue = [];
     this.status = 'idle';
-    this.port = 9876;
-    this.lmStudioUrl = 'http://localhost:1234/v1'; // Default LM Studio port
+    this.port = process.env.BACKEND_PORT || 9876;
+    this.lmStudioUrl = process.env.LM_STUDIO_URL || 'http://localhost:1234/v1';
   }
 
   async start() {
