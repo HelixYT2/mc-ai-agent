@@ -1,0 +1,35 @@
+{
+  "name": "mc-ai-agent",
+  "version": "0.1.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^26.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.aimod.mcaia",
+    "productName": "MC AI Agent",
+    "files": [
+      "renderer/**",
+      "main.js",
+      "preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend/dist/backend.exe",
+        "to": "backend/backend.exe"
+      },
+      {
+        "from": "../mod/build/libs/AIHandlerMod-1.0.0.jar",
+        "to": "mod/AIHandlerMod.jar"
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
