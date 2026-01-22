@@ -1,0 +1,41 @@
+{
+  "name": "mc-ai-agent",
+  "version": "1.0.0",
+  "description": "AI-powered Minecraft automation using Electron, LM Studio, and Fabric mod",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --win",
+    "build-all": "electron-builder -mwl",
+    "pack": "electron-builder --dir"
+  },
+  "keywords": ["minecraft", "ai", "automation", "electron", "fabric"],
+  "author": "HelixYT2",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "axios": "^1.6.5",
+    "node-window-manager": "^2.2.4"
+  },
+  "build": {
+    "appId": "com.helixyt2.mc-ai-agent",
+    "productName": "Minecraft AI Agent",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "assets/icon.ico"
+    }
+  }
+}

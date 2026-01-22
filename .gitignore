@@ -1,0 +1,53 @@
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Electron build outputs
+dist/
+build/
+out/
+*.exe
+*.dmg
+*.AppImage
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Minecraft mod build
+minecraft-mod/build/
+minecraft-mod/.gradle/
+minecraft-mod/run/
+minecraft-mod/*.jar
+minecraft-mod/gradle-app.setting
+
+# Python (if used later)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+ENV/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Secrets
+.env
+secrets.json
+*.key
