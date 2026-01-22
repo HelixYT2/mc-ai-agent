@@ -100,7 +100,9 @@ class BackendServer extends EventEmitter {
     }
 
     this.status = 'processing';
+    const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     this.currentTask = {
+      id: taskId,
       prompt,
       settings,
       startTime: Date.now(),
@@ -139,6 +141,15 @@ class BackendServer extends EventEmitter {
         max_tokens: settings.maxTokens || 2000,
         stream: false
       });
+
+      // Validate response structure
+      if (!response.data || !response.data.choices || !Array.isArray(response.data.choices) || response.data.choices.length === 0) {
+        throw new Error('Invalid response format from LM Studio');
+      }
+      
+      if (!response.data.choices[0].message || !response.data.choices[0].message.content) {
+        throw new Error('Missing message content in LM Studio response');
+      }
 
       return response.data.choices[0].message.content;
     } catch (error) {
@@ -235,42 +246,70 @@ Example:
       throw new Error('Lost connection to Minecraft instance');
     }
 
-    for (const action of actions) {
+    for (let i = 0; i < actions.length; i++) {
+      // Check if stopped before processing each action
       if (this.status === 'stopped') {
         console.log('[Backend] Task stopped by user');
         break;
       }
 
+      const action = actions[i];
+      // Add unique ID to action for tracking
+      action.id = `action_${Date.now()}_${i}`;
+      
       await this.sendActionToMod(connection, action);
       
       // Wait for action to complete
-      await this.waitForActionComplete(action);
+      try {
+        await this.waitForActionComplete(action);
+      } catch (error) {
+        // If action fails or times out, check if we should continue
+        if (this.status === 'stopped') {
+          console.log('[Backend] Task stopped during action wait');
+          break;
+        }
+        throw error;
+      }
     }
 
-    this.status = 'complete';
+    if (this.status !== 'stopped') {
+      this.status = 'complete';
+    }
     this.currentTask = null;
   }
 
   async sendActionToMod(connection, action) {
     return new Promise((resolve, reject) => {
+      // Check if connection is still open
+      if (!connection || connection.readyState !== WebSocket.OPEN) {
+        reject(new Error('WebSocket connection is not open'));
+        return;
+      }
+
       const message = {
         type: 'execute_action',
         action: action
       };
 
-      connection.send(JSON.stringify(message), (error) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve();
-        }
-      });
+      try {
+        connection.send(JSON.stringify(message), (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        });
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
   async waitForActionComplete(action, timeout = 60000) {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
+        this.removeListener('action_complete', handler);
+        this.removeListener('action_failed', failHandler);
         reject(new Error('Action timeout'));
       }, timeout);
 
@@ -278,11 +317,22 @@ Example:
         if (message.actionId === action.id) {
           clearTimeout(timer);
           this.removeListener('action_complete', handler);
+          this.removeListener('action_failed', failHandler);
           resolve();
         }
       };
 
+      const failHandler = (message) => {
+        if (message.actionId === action.id) {
+          clearTimeout(timer);
+          this.removeListener('action_complete', handler);
+          this.removeListener('action_failed', failHandler);
+          reject(new Error(message.error || 'Action failed'));
+        }
+      };
+
       this.on('action_complete', handler);
+      this.on('action_failed', failHandler);
     });
   }
 
@@ -333,7 +383,11 @@ Example:
 
   stop() {
     if (this.wss) {
-      this.wss.close();
+      this.wss.close((error) => {
+        if (error) {
+          console.error('[Backend] Error closing WebSocket server:', error);
+        }
+      });
     }
   }
 }

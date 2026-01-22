@@ -53,7 +53,15 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     if (backendServer) {
-      backendServer.stop();
+      try {
+        backendServer.stop();
+      } catch (error) {
+        console.error('[Main] Error stopping backend server:', error);
+      }
+    }
+    if (minecraftDetector) {
+      // Cleanup detector resources if needed
+      minecraftDetector = null;
     }
     app.quit();
   }

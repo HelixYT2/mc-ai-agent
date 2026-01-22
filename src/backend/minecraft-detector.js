@@ -33,8 +33,12 @@ class MinecraftDetector {
       let windows = [];
       
       if (windowManagerAvailable) {
-        const windowManager = require('node-window-manager');
-        windows = windowManager.getWindows();
+        try {
+          const windowManager = require('node-window-manager');
+          windows = windowManager.getWindows();
+        } catch (error) {
+          console.error('[Detector] Error loading window manager:', error);
+        }
       }
 
       const instances = [];
@@ -45,7 +49,7 @@ class MinecraftDetector {
           // Extract PID
           const parts = line.split(',');
           if (parts.length >= 2) {
-            const pidStr = parts[1].replace(/"/g, '').trim();
+            const pidStr = parts[1] ? parts[1].replace(/"/g, '').trim() : '';
             const pid = parseInt(pidStr);
             
             if (!isNaN(pid)) {
@@ -53,16 +57,24 @@ class MinecraftDetector {
               let windowTitle = 'Unknown';
               if (windows.length > 0) {
                 const matchingWindow = windows.find(w => {
-                  const title = w.getTitle();
-                  return title && (
-                    title.includes('Minecraft') || 
-                    title.includes('minecraft') ||
-                    title.includes('1.21')
-                  );
+                  try {
+                    const title = w.getTitle();
+                    return title && (
+                      title.includes('Minecraft') || 
+                      title.includes('minecraft') ||
+                      title.includes('1.21')
+                    );
+                  } catch (error) {
+                    return false;
+                  }
                 });
                 
                 if (matchingWindow) {
-                  windowTitle = matchingWindow.getTitle();
+                  try {
+                    windowTitle = matchingWindow.getTitle();
+                  } catch (error) {
+                    windowTitle = 'Minecraft';
+                  }
                 }
               }
               
@@ -117,6 +129,9 @@ class MinecraftDetector {
 
   extractVersion(windowTitle) {
     // Try to extract version from window title
+    if (!windowTitle || typeof windowTitle !== 'string') {
+      return 'Unknown';
+    }
     const versionMatch = windowTitle.match(/\d+\.\d+(\.\d+)?/);
     return versionMatch ? versionMatch[0] : 'Unknown';
   }

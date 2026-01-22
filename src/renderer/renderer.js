@@ -4,8 +4,10 @@ const { ipcRenderer } = require('electron');
 let selectedInstance = null;
 let isConnected = false;
 let isProcessing = false;
+let pollTimeout = null; // Track polling timeout for cleanup
+let isConnecting = false; // Prevent race conditions in instance selection
 
-// DOM elements
+// DOM elements - with null checks
 const refreshBtn = document.getElementById('refresh-btn');
 const instancesList = document.getElementById('instances-list');
 const sendBtn = document.getElementById('send-btn');
@@ -18,6 +20,14 @@ const aiMode = document.getElementById('ai-mode');
 const lmStudioUrl = document.getElementById('lm-studio-url');
 const temperature = document.getElementById('temperature');
 const temperatureValue = document.getElementById('temperature-value');
+
+// Verify critical elements exist
+if (!refreshBtn || !instancesList || !sendBtn || !stopBtn || !promptInput || 
+    !statusIndicator || !instanceInfo || !logsContainer || !aiMode || 
+    !lmStudioUrl || !temperature || !temperatureValue) {
+  console.error('[Renderer] Critical DOM elements missing!');
+  throw new Error('Required DOM elements not found');
+}
 
 // Event listeners
 refreshBtn.addEventListener('click', detectInstances);
@@ -74,6 +84,14 @@ function displayInstances(instances) {
 }
 
 async function selectInstance(instance, element) {
+  // Prevent multiple simultaneous connections
+  if (isConnecting) {
+    addLog('Connection already in progress, please wait...', 'warning');
+    return;
+  }
+
+  isConnecting = true;
+
   // Remove previous selection
   document.querySelectorAll('.instance-item').forEach(item => {
     item.classList.remove('selected');
@@ -101,6 +119,8 @@ async function selectInstance(instance, element) {
   } catch (error) {
     addLog(`Connection error: ${error.message}`, 'error');
     updateStatus('disconnected');
+  } finally {
+    isConnecting = false;
   }
 }
 
@@ -157,6 +177,12 @@ async function sendPrompt() {
 async function stopTask() {
   addLog('Stopping task...', 'warning');
   
+  // Clear polling timeout
+  if (pollTimeout) {
+    clearTimeout(pollTimeout);
+    pollTimeout = null;
+  }
+
   try {
     const result = await ipcRenderer.invoke('stop-task');
     
@@ -176,6 +202,12 @@ async function stopTask() {
 }
 
 async function pollStatus() {
+  // Clear any existing timeout
+  if (pollTimeout) {
+    clearTimeout(pollTimeout);
+    pollTimeout = null;
+  }
+
   if (!isProcessing) return;
   
   try {
@@ -197,11 +229,16 @@ async function pollStatus() {
       return;
     }
     
-    // Continue polling
-    setTimeout(pollStatus, 1000);
+    // Continue polling only if still processing
+    if (isProcessing) {
+      pollTimeout = setTimeout(pollStatus, 1000);
+    }
   } catch (error) {
     console.error('Status poll error:', error);
-    setTimeout(pollStatus, 1000);
+    // Continue polling even on error, but only if still processing
+    if (isProcessing) {
+      pollTimeout = setTimeout(pollStatus, 1000);
+    }
   }
 }
 
@@ -224,9 +261,17 @@ function addLog(message, type = 'info') {
   const now = new Date();
   const time = now.toTimeString().split(' ')[0];
   
+  // Sanitize message to prevent XSS
+  const sanitizedMessage = String(message)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+  
   entry.innerHTML = `
     <span class="log-time">[${time}]</span>
-    <span class="log-message">${message}</span>
+    <span class="log-message">${sanitizedMessage}</span>
   `;
   
   logsContainer.appendChild(entry);
