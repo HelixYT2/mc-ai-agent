@@ -100,7 +100,7 @@ class BackendServer extends EventEmitter {
     }
 
     this.status = 'processing';
-    const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
     this.currentTask = {
       id: taskId,
       prompt,
@@ -255,7 +255,7 @@ Example:
 
       const action = actions[i];
       // Add unique ID to action for tracking
-      action.id = `action_${Date.now()}_${i}`;
+      action.id = `action_${Date.now()}_${i}_${Math.random().toString(36).substring(2, 9)}`;
       
       await this.sendActionToMod(connection, action);
       
@@ -383,11 +383,11 @@ Example:
 
   stop() {
     if (this.wss) {
-      this.wss.close((error) => {
-        if (error) {
-          console.error('[Backend] Error closing WebSocket server:', error);
-        }
-      });
+      try {
+        this.wss.close();
+      } catch (error) {
+        console.error('[Backend] Error closing WebSocket server:', error);
+      }
     }
   }
 }

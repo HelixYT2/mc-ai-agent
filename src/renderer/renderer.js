@@ -8,26 +8,42 @@ let pollTimeout = null; // Track polling timeout for cleanup
 let isConnecting = false; // Prevent race conditions in instance selection
 
 // DOM elements - with null checks
-const refreshBtn = document.getElementById('refresh-btn');
-const instancesList = document.getElementById('instances-list');
-const sendBtn = document.getElementById('send-btn');
-const stopBtn = document.getElementById('stop-btn');
-const promptInput = document.getElementById('prompt-input');
-const statusIndicator = document.getElementById('status-indicator');
-const instanceInfo = document.getElementById('instance-info');
-const logsContainer = document.getElementById('logs-container');
-const aiMode = document.getElementById('ai-mode');
-const lmStudioUrl = document.getElementById('lm-studio-url');
-const temperature = document.getElementById('temperature');
-const temperatureValue = document.getElementById('temperature-value');
+const requiredElementIds = [
+  'refresh-btn', 'instances-list', 'send-btn', 'stop-btn', 'prompt-input',
+  'status-indicator', 'instance-info', 'logs-container', 'ai-mode',
+  'lm-studio-url', 'temperature', 'temperature-value'
+];
 
-// Verify critical elements exist
-if (!refreshBtn || !instancesList || !sendBtn || !stopBtn || !promptInput || 
-    !statusIndicator || !instanceInfo || !logsContainer || !aiMode || 
-    !lmStudioUrl || !temperature || !temperatureValue) {
-  console.error('[Renderer] Critical DOM elements missing!');
-  throw new Error('Required DOM elements not found');
+const elements = {};
+const missingElements = [];
+
+requiredElementIds.forEach(id => {
+  const element = document.getElementById(id);
+  if (!element) {
+    missingElements.push(id);
+  } else {
+    elements[id] = element;
+  }
+});
+
+if (missingElements.length > 0) {
+  console.error('[Renderer] Missing DOM elements:', missingElements);
+  throw new Error(`Required DOM elements not found: ${missingElements.join(', ')}`);
 }
+
+// Assign to convenient variable names
+const refreshBtn = elements['refresh-btn'];
+const instancesList = elements['instances-list'];
+const sendBtn = elements['send-btn'];
+const stopBtn = elements['stop-btn'];
+const promptInput = elements['prompt-input'];
+const statusIndicator = elements['status-indicator'];
+const instanceInfo = elements['instance-info'];
+const logsContainer = elements['logs-container'];
+const aiMode = elements['ai-mode'];
+const lmStudioUrl = elements['lm-studio-url'];
+const temperature = elements['temperature'];
+const temperatureValue = elements['temperature-value'];
 
 // Event listeners
 refreshBtn.addEventListener('click', detectInstances);
