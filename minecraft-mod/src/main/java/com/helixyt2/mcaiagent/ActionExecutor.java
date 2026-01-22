@@ -1,6 +1,9 @@
 package com.helixyt2.mcaiagent;
 
 import com.google.gson.JsonObject;
+import com.helixyt2.mcaiagent.automation.BaritoneIntegration;
+import com.helixyt2.mcaiagent.automation.CraftingAutomation;
+import com.helixyt2.mcaiagent.automation.SmeltingAutomation;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.util.math.BlockPos;
@@ -14,7 +17,18 @@ public class ActionExecutor {
     private boolean isExecuting = false;
     private int tickCounter = 0;
     
-    public void queueAction(JsonObject action) {
+    private final BaritoneIntegration baritone;
+    private final CraftingAutomation crafting;
+    private final SmeltingAutomation smelting;
+    private final BaritoneIntegration baritone;
+    private final CraftingAutomation crafting;
+    private final SmeltingAutomation smelting;
+    
+    public ActionExecutor(MinecraftClient client) {
+        this.baritone = new BaritoneIntegration(client);
+        this.crafting = new CraftingAutomation(client);
+        this.smelting = new SmeltingAutomation(client);
+    }
         actionQueue.add(action);
         MCAIAgentMod.LOGGER.info("Action queued: " + action.get("type").getAsString());
     }
@@ -91,17 +105,40 @@ public class ActionExecutor {
     
     private boolean executeGoto(MinecraftClient client, JsonObject action) {
         // Use Baritone for pathfinding
-        // This would integrate with Baritone API
-        // For now, just a placeholder
-        MCAIAgentMod.LOGGER.info("Goto action - would use Baritone here");
-        return tickCounter > 20; // Simulate completion after 1 second
+        if (tickCounter == 1) { // Start pathfinding on first tick
+            int x = action.has("x") ? action.get("x").getAsInt() : 0;
+            int y = action.has("y") ? action.get("y").getAsInt() : 64;
+            int z = action.has("z") ? action.get("z").getAsInt() : 0;
+            
+            BlockPos target = new BlockPos(x, y, z);
+            baritone.goToPosition(target);
+            MCAIAgentMod.LOGGER.info("Started pathfinding to " + target);
+        }
+        
+        // Check if we've arrived
+        if (!baritone.isActive()) {
+            return true; // Baritone finished
+        }
+        
+        return tickCounter > 600; // Timeout after 30 seconds
     }
     
     private boolean executeMine(MinecraftClient client, JsonObject action) {
-        // Mining logic
-        // This would use Baritone's mining capabilities
-        MCAIAgentMod.LOGGER.info("Mine action - would use Baritone mining");
-        return tickCounter > 40; // Simulate completion
+        // Mining logic using Baritone
+        if (tickCounter == 1) {
+            String blockType = action.has("target") ? action.get("target").getAsString() : "stone";
+            int quantity = action.has("quantity") ? action.get("quantity").getAsInt() : 1;
+            
+            baritone.mineBlock(blockType, quantity);
+            MCAIAgentMod.LOGGER.info("Started mining " + quantity + " " + blockType);
+        }
+        
+        // Check if mining is complete
+        if (!baritone.isActive()) {
+            return true;
+        }
+        
+        return tickCounter > 1200; // Timeout after 60 seconds
     }
     
     private boolean executePlace(MinecraftClient client, JsonObject action) {
@@ -113,18 +150,37 @@ public class ActionExecutor {
     private boolean executeCraft(MinecraftClient client, JsonObject action) {
         // Crafting automation
         String recipe = action.has("recipe") ? action.get("recipe").getAsString() : "unknown";
-        MCAIAgentMod.LOGGER.info("Craft action: " + recipe);
+        int quantity = action.has("quantity") ? action.get("quantity").getAsInt() : 1;
         
-        // Would integrate with CraftingAutomation class
-        return tickCounter > 60;
+        if (tickCounter == 1) {
+            crafting.startCrafting(recipe, quantity);
+            MCAIAgentMod.LOGGER.info("Started crafting " + quantity + " " + recipe);
+        }
+        
+        // Tick the crafting automation
+        if (crafting.isActive()) {
+            return crafting.tick();
+        }
+        
+        return tickCounter > 600; // Timeout
     }
     
     private boolean executeSmelt(MinecraftClient client, JsonObject action) {
         // Smelting automation
-        MCAIAgentMod.LOGGER.info("Smelt action");
+        String item = action.has("item") ? action.get("item").getAsString() : "iron_ore";
+        int quantity = action.has("quantity") ? action.get("quantity").getAsInt() : 1;
         
-        // Would integrate with SmeltingAutomation class
-        return tickCounter > 100;
+        if (tickCounter == 1) {
+            smelting.startSmelting(item, quantity);
+            MCAIAgentMod.LOGGER.info("Started smelting " + quantity + " " + item);
+        }
+        
+        // Tick the smelting automation
+        if (smelting.isActive()) {
+            return smelting.tick();
+        }
+        
+        return tickCounter > 1200; // Timeout
     }
     
     private boolean executeInteract(MinecraftClient client, JsonObject action) {
@@ -146,6 +202,10 @@ public class ActionExecutor {
         actionQueue.clear();
         currentAction = null;
         isExecuting = false;
+        
+        // Stop automation systems
+        baritone.stop();
+        
         MCAIAgentMod.LOGGER.info("All actions stopped");
     }
     

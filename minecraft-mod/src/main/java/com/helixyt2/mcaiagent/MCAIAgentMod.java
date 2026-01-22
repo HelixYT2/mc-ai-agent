@@ -19,8 +19,10 @@ public class MCAIAgentMod implements ClientModInitializer {
         instance = this;
         LOGGER.info("Initializing Minecraft AI Agent Mod");
         
+        MinecraftClient client = MinecraftClient.getInstance();
+        
         // Initialize components
-        actionExecutor = new ActionExecutor();
+        actionExecutor = new ActionExecutor(client);
         stateManager = new StateManager();
         
         // Start WebSocket client
@@ -28,13 +30,13 @@ public class MCAIAgentMod implements ClientModInitializer {
         wsClient.connect();
         
         // Register tick event
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (client.player != null) {
+        ClientTickEvents.END_CLIENT_TICK.register(tickClient -> {
+            if (tickClient.player != null) {
                 // Update state periodically
-                stateManager.tick(client);
+                stateManager.tick(tickClient);
                 
                 // Execute queued actions
-                actionExecutor.tick(client);
+                actionExecutor.tick(tickClient);
             }
         });
         
